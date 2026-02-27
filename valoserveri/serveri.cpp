@@ -505,9 +505,21 @@ void Serveri::run() {
 					socklen_t fromLength = sizeof(from);
 
 					ssize_t len = recvfrom(UDPfd, buffer.data(), buffer.size(), 0, reinterpret_cast<struct sockaddr *>(&from), &fromLength);
+					if (len < 0) {
+						LOG_ERROR("recvfrom failed: {}", strerror(errno));
+						fd.revents = 0;
+						continue;
+					}
+
+					if (len == 0) {
+						LOG_DEBUG("received empty UDP packet from \"{}\":{}", inet_ntoa(from.sin_addr), ntohs(from.sin_port));
+						fd.revents = 0;
+						continue;
+					}
+
 					LOG_DEBUG("received {} bytes from \"{}\":{}\n", len, inet_ntoa(from.sin_addr), ntohs(from.sin_port));
 
-					lightPacket(nonstd::make_span(buffer).first(len));
+					lightPacket(nonstd::make_span(buffer).first(static_cast<size_t>(len)));
 
 					fd.revents = 0;
 
